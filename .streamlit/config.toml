@@ -1,0 +1,27 @@
+# Streamlit 기본 테마를 `design.md`(세방 CI 디자인 시스템, 실제 CI 원본 파일
+# `SEBANG_CI_251021.ai`로 색상 실측 재확인함)에 맞춘다.
+# 폰트를 [[theme.fontFaces]]로 등록해야 st.dataframe(캔버스로 그려져 CSS
+# font-family를 무시함)을 포함한 Streamlit 전체 컴포넌트가 세방고딕을 따른다 —
+# CSS만으로는 캔버스 기반 표에 폰트가 적용되지 않는다.
+[server]
+enableStaticServing = true
+
+[theme]
+primaryColor = "#EB3300"              # SEBANG Orange — 버튼 등 핵심 강조
+backgroundColor = "#FFFFFF"           # color-bg-base
+secondaryBackgroundColor = "#FBFBFB"  # color-bg-surface
+textColor = "#1F3742"                 # SEBANG Ink — color-text-primary
+font = "SEBANG Gothic, Pretendard, Noto Sans KR, sans-serif"
+headingFont = "SEBANG Gothic, Pretendard, Noto Sans KR, sans-serif"
+
+[[theme.fontFaces]]
+family = "SEBANG Gothic"
+url = "app/static/SebangGothic-Regular.woff2"
+weight = "400"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "SEBANG Gothic"
+url = "app/static/SebangGothic-Bold.woff2"
+weight = "700"
+style = "normal"

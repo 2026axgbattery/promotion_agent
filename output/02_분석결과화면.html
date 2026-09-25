@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로모션 효과 분석 결과 — 세방전지 차량대리점팀</title>
+<!-- SEBANG 디자인 시스템: 실측 CI 컬러(#1F3742) + SEBANG Gothic 폰트(base64 내장) 즉시 적용 -->
+<link rel="stylesheet" href="../sebang-design-system/sebang.css">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* 이 화면 전용 스타일만 남깁니다. 헤더/KPI/섹션/배지/배너 등 공용 스타일은 shared.css 참고. */
+
+  /* ---------- Active promotions panel ---------- */
+  .promo-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--space-4); align-items: start; }
+  .promo-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); background: var(--color-bg-base); }
+  .promo-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+  .promo-name { font-size: 1rem; font-weight: 700; }
+  .promo-period { font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 2px; }
+  .promo-type-badge { font-size: 0.6875rem; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-full); }
+  .type-tier { background: var(--sebang-ink-50); color: var(--sebang-ink); }
+  .type-link { background: var(--sebang-green-50); color: var(--sebang-green-700); }
+  .type-flat { background: var(--sebang-orange-50); color: var(--color-danger); }
+
+  .promo-rule { border-top: 1px dashed var(--color-border); padding-top: var(--space-3); margin-top: var(--space-3); }
+  .promo-rule:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+  .promo-rule-title { font-size: 0.8125rem; font-weight: 700; margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .promo-rule-desc { font-size: 0.8125rem; color: var(--color-text-secondary); margin-bottom: var(--space-2); }
+
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: var(--space-2); }
+  .mini-table th, .mini-table td { border: 1px solid var(--color-border); padding: 5px 8px; text-align: center; }
+  .mini-table th { background: var(--color-bg-surface); font-weight: 600; color: var(--color-text-secondary); }
+  .mini-table td.rowhead { text-align: left; font-weight: 600; background: var(--color-bg-surface); }
+
+  .product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-2); }
+  .product-tag { font-size: 0.6875rem; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+  .product-tag.hi { border-color: var(--sebang-green); color: var(--sebang-green-700); background: var(--sebang-green-50); }
+
+  .assumption-flag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.6875rem; font-weight: 700;
+    padding: 2px 7px; border-radius: var(--radius-full);
+    background: var(--sebang-orange-50); color: var(--color-danger);
+    margin-left: 4px;
+  }
+  .example-box {
+    margin-top: var(--space-3);
+    background: var(--sebang-green-50);
+    border: 1px solid #CCEAEE;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    font-size: 0.75rem;
+    color: var(--sebang-ink);
+  }
+  .example-box b { color: var(--sebang-green-700); }
+
+  /* ---------- Table ---------- */
+  .table-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: auto; background: var(--color-bg-base); }
+  table.result { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 1180px; }
+  thead th { text-align: left; background: var(--color-bg-surface); color: var(--color-text-secondary); font-weight: 600; font-size: 0.75rem; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+  thead th.num, td.num { text-align: right; }
+  tbody td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--color-bg-surface); }
+
+  .store-cell { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
+  .store-name { font-weight: 600; }
+  .dc-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.6875rem; padding: 1px 7px; border-radius: var(--radius-sm); background: var(--sebang-ink-50); color: var(--sebang-ink); width: fit-content; }
+  .dc-badge .growth { color: var(--sebang-green-700); font-weight: 700; }
+  .product-code { font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 2px; }
+
+  .support-stack { display: flex; flex-direction: column; gap: 5px; min-width: 220px; }
+  .support-line { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); font-size: 0.75rem; }
+  .support-line .lbl { display: flex; align-items: center; gap: 5px; color: var(--color-text-secondary); }
+  .support-line .lbl .dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+  .dot-dc { background: var(--sebang-gray); }
+  .dot-promo { background: var(--sebang-green); }
+  .support-line .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .promo-detail { font-size: 0.6875rem; color: var(--color-text-secondary); padding-left: 12px; }
+  .support-total { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-border); margin-top: 2px; padding-top: 5px; font-size: 0.8125rem; font-weight: 700; }
+  .support-total .val { color: var(--sebang-green-700); }
+
+  .threshold-note { font-size: 0.6875rem; color: var(--color-text-secondary); margin-top: 4px; max-width: 220px; }
+
+  .metric-pair { display: flex; gap: var(--space-3); align-items: center; }
+  .bar-wrap { width: 60px; height: 6px; background: var(--sebang-ink-50); border-radius: var(--radius-full); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: var(--radius-full); }
+  .bar-fill.op { background: var(--sebang-ink); }
+  .bar-fill.growth-pos { background: var(--sebang-green); }
+  .bar-fill.growth-neg { background: var(--color-accent-primary); }
+  .metric-num { font-weight: 600; font-size: 0.8125rem; width: 46px; text-align: right; }
+  .metric-num.neg { color: var(--color-danger); }
+  .metric-num.pos { color: var(--sebang-green-700); }
+
+  /* ---------- Deviation comparison ---------- */
+  .compare-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); background: var(--color-bg-surface); }
+  .compare-picker { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+  .store-chip { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); border: 1px solid var(--color-border); background: var(--color-bg-base); font-size: 0.8125rem; font-weight: 600; }
+  .store-chip.active-a { border-color: var(--sebang-ink); background: var(--sebang-ink-50); }
+  .store-chip.active-b { border-color: var(--sebang-green); background: var(--sebang-green-50); color: var(--sebang-green-700); }
+  .swatch { width: 8px; height: 8px; border-radius: 50%; }
+  .swatch-a { background: var(--sebang-ink); }
+  .swatch-b { background: var(--sebang-green); }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+  .compare-col-title { font-size: 0.9375rem; font-weight: 700; margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-2); }
+  .factor-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px dashed var(--color-border); gap: var(--space-3); }
+  .factor-row:last-child { border-bottom: none; }
+  .factor-label { font-size: 0.8125rem; color: var(--color-text-secondary); }
+  .factor-value { font-weight: 700; font-size: 0.9375rem; text-align: right; }
+  .factor-value small { display: block; font-weight: 400; font-size: 0.6875rem; color: var(--color-text-secondary); }
+
+  .verdict-banner { margin-top: var(--space-5); padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); background: var(--sebang-orange-50); border: 1px solid #FBD6CC; color: var(--sebang-ink); font-size: 0.875rem; display: flex; gap: var(--space-3); align-items: flex-start; }
+  .verdict-banner b { color: var(--color-danger); }
+  .verdict-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--color-accent-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  @media (max-width: 960px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    .promo-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="crumb-row">
+    <a href="01_실적업로드.html">실적 업로드</a>
+    <span class="sep">/</span>
+    <span class="current">분석 결과</span>
+    <span class="sep">/</span>
+    <a href="03_이력_대시보드.html">이력 조회</a>
+  </div>
+
+  <div class="topbar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 595.276 231.696" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SEBANG">
+        <path fill="currentColor" d="M 124.988281 126.054688 C 123.054688 122.753906 119.492188 120.503906 114.375 119.367188 L 84.269531 112.652344 C 81.96875 112.136719 80.734375 111.574219 80.273438 110.824219 C 80.003906 110.386719 79.96875 109.835938 80.148438 109.148438 L 81.5625 105.273438 L 131.269531 105.273438 L 138.089844 84.414062 L 84.535156 84.414062 C 76.113281 84.414062 70.261719 85.457031 66.125 87.707031 C 61.179688 90.398438 57.871094 94.660156 56.019531 100.742188 L 53.300781 109.199219 C 51.847656 113.941406 52.394531 119.035156 54.789062 123.179688 C 57.144531 127.242188 60.996094 129.984375 65.910156 131.109375 L 94.691406 137.535156 C 96.339844 137.882812 97.414062 138.433594 97.878906 139.167969 C 98.167969 139.613281 98.226562 140.140625 98.089844 140.726562 L 96.664062 145.066406 L 46.699219 145.066406 L 39.976562 165.894531 L 91.207031 165.894531 C 102.574219 165.894531 108.519531 165.3125 113.71875 161.8125 C 119.089844 158.203125 121.214844 152.398438 123.253906 145.734375 L 125.683594 137.570312 C 127.023438 133.136719 126.78125 129.152344 124.988281 126.054688 "/>
+        <path fill="currentColor" d="M 347.71875 154.867188 L 326.140625 154.867188 L 331.789062 140.066406 C 332.9375 137.015625 333.984375 135.929688 337.53125 135.929688 L 353.6875 135.929688 Z M 380.507812 119.90625 C 378.179688 116.730469 374.046875 115.117188 368.21875 115.117188 L 332.945312 115.117188 C 320.570312 115.117188 312.644531 120.042969 308.710938 130.207031 L 282.8125 196.617188 L 310.128906 196.617188 L 318.355469 175.246094 L 341.074219 175.246094 L 334.207031 196.617188 L 360.980469 196.617188 L 381.488281 132.738281 C 383.140625 127.484375 382.808594 123.039062 380.507812 119.90625 "/>
+        <path fill="currentColor" d="M 509.464844 136.003906 L 548.054688 136.003906 L 554.925781 115.117188 L 503.15625 115.117188 C 491.136719 115.117188 484.535156 119.425781 481.058594 129.535156 L 464.992188 179.796875 C 463.464844 184.363281 463.847656 188.574219 466.070312 191.671875 C 468.382812 194.882812 472.429688 196.585938 477.765625 196.585938 L 513.4375 196.585938 C 521.953125 196.585938 525.527344 196.0625 529.375 194.261719 C 534.035156 192.085938 536.683594 188.644531 538.820312 181.988281 L 546.675781 157.476562 C 547.824219 153.910156 547.648438 151.046875 546.140625 148.980469 C 544.597656 146.859375 541.757812 145.734375 537.917969 145.734375 L 512.539062 145.734375 L 506.097656 165.859375 L 517.222656 165.859375 L 514.71875 173.722656 C 514.128906 175.375 513.625 175.683594 511.53125 175.683594 L 493.078125 175.683594 L 504.855469 139.027344 C 505.691406 136.457031 507.015625 136.003906 509.464844 136.003906 "/>
+        <path fill="currentColor" d="M 447.175781 115.117188 L 434.335938 155.144531 L 424.21875 120.222656 C 423.285156 116.882812 420.730469 115.117188 416.828125 115.117188 L 399.117188 115.117188 L 373.203125 195.882812 L 372.984375 196.582031 L 399.742188 196.582031 L 412.410156 157.117188 L 422.769531 191.714844 C 423.328125 193.535156 424.980469 196.582031 429.792969 196.582031 L 447.804688 196.582031 L 473.941406 115.117188 Z M 447.175781 115.117188 "/>
+        <path fill="currentColor" d="M 255.085938 172.742188 C 254.132812 175.535156 252.683594 175.675781 250.398438 175.675781 L 230.8125 175.675781 L 233.957031 165.878906 L 257.300781 165.878906 Z M 294.84375 119.371094 C 292.828125 116.625 289 115.117188 284.054688 115.117188 L 169.433594 115.117188 L 171.898438 107.378906 C 172.519531 105.367188 173.898438 105.269531 176.292969 105.269531 L 215.359375 105.269531 L 222.046875 84.414062 L 175.734375 84.414062 C 167.316406 84.414062 161.460938 85.457031 157.324219 87.707031 C 152.382812 90.398438 149.066406 94.664062 147.210938 100.746094 L 126.296875 165.878906 L 196.300781 165.878906 L 202.992188 145.0625 L 159.882812 145.0625 L 163.023438 135.230469 L 267.136719 135.230469 L 264.605469 143.070312 C 264.179688 144.363281 263.558594 145.0625 261.535156 145.0625 L 213.859375 145.082031 L 197.34375 196.617188 L 251.054688 196.617188 C 261.484375 196.617188 266.25 195.878906 270.664062 193.582031 C 274.40625 191.644531 276.871094 188.230469 278.664062 182.527344 L 282.601562 170.21875 C 283.867188 166.453125 284.804688 162.164062 282.1875 158.976562 L 279.359375 155.8125 L 283.808594 152.714844 C 288.523438 149.699219 289.851562 147.917969 291.671875 142.113281 L 295.675781 129.585938 C 296.992188 125.433594 296.699219 121.898438 294.84375 119.371094 "/>
+      </svg>
+      <div class="brand-divider"></div>
+      <div>
+        <div class="brand-title">프로모션 효과 시뮬레이션 에이전트</div>
+        <div class="brand-sub">세방전지 · 국내영업본부 차량대리점팀</div>
+      </div>
+    </div>
+    <div class="context-controls">
+      <div class="period-picker">
+        <button class="select-pill period-trigger" id="periodTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+          기준연월 <b id="periodLabel">2026-08</b> <span class="chev">▾</span>
+        </button>
+        <div class="period-menu" id="periodMenu" hidden role="listbox"></div>
+      </div>
+      <div class="select-pill multi" id="periodPromoCount">이번 달 시행 프로모션 <b>2건 동시 진행</b></div>
+      <button class="btn-primary">결과 내보내기</button>
+    </div>
+  </div>
+
+  <div class="info-banner" id="noDataBanner" hidden>
+    <span class="info-icon">!</span>
+    <div>선택한 기준연월(<b id="noDataPeriod"></b>)에는 아직 <b>DBMS에 저장된 분석 결과가 없습니다</b>. 해당 연월의 실적 파일·프로모션 기준 마스터를 업로드해 새로 분석해야 이 화면에서 조회할 수 있습니다.</div>
+  </div>
+
+  <h1 class="page-title">대리점 × 제품 실적 분석 결과</h1>
+  <p class="page-sub" id="periodPageSub">DC율로 인한 지원과 프로모션 달성으로 인한 지원을 분리해 대리점별 영업이익율 편차의 원인을 확인합니다. 8월에는 <b>10+1 프로모션</b>과 <b>대형 제품 D/C 프로모션</b>이 동시에 시행되었습니다.</p>
+
+  <!-- 이번 달 시행 프로모션 -->
+  <div id="mainContent">
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title" id="promoSectionTitle">이번 달 시행 프로모션</div>
+        <div class="section-hint" id="promoSectionHint">2026-08-01 ~ 2026-08-31 동안 서로 다른 두 프로모션이 동시에 적용됩니다.</div>
+      </div>
+    </div>
+
+    <div class="promo-grid" id="promoGrid"></div>
+  </div>
+
+  <!-- KPI 요약 -->
+  <div class="kpi-row" id="topKpiRow"></div>
+
+  <!-- 프로모션 효과 평가 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title" id="effectSectionTitle">이번 달 프로모션 효과 평가 (본사 관점)</div>
+        <div class="section-hint">프로모션 해당 대리점과 미해당 대리점의 평균을 비교해 효과 크기를 추정합니다.</div>
+      </div>
+    </div>
+    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)" id="effectKpiRow"></div>
+  </div>
+
+  <!-- 대리점 그룹별 조회 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">대리점 그룹별 조회</div>
+        <div class="section-hint">영업이익율 구간으로 대리점을 묶어, 그룹별로 프로모션이 얼마나 효율적이었는지 확인합니다.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4);flex-wrap:wrap" id="groupTabs"></div>
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)" id="groupStats"></div>
+  </div>
+
+  <!-- 대리점 x 제품 결과 표 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">대리점 × 제품 단위 결과</div>
+        <div class="section-hint">DC율은 대리점 등급이 아니라 매출 규모 구간별 "매출 DC" + 조건부 "성장 DC" 가산으로 결정됩니다(참고자료 — 시스템이 재계산하지 않고 실적 파일 값을 그대로 사용). 기준가·제품타입은 제품 마스터(61종) 기준입니다.</div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:var(--sebang-gray)"></span>DC 지원금액</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--sebang-green)"></span>프로모션 지원금액</span>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="result">
+        <thead>
+          <tr>
+            <th>대리점 / DC 구성</th>
+            <th>제품타입 / 제품코드</th>
+            <th class="num">매출액</th>
+            <th>지원금액 내역</th>
+            <th>프로모션 매칭 상태</th>
+            <th class="num">영업이익율</th>
+            <th class="num">매출증감율</th>
+          </tr>
+        </thead>
+        <tbody id="resultTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 편차 원인 구분 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">편차 원인 구분 — DC율 차이 vs 지원 조건 차이</div>
+        <div class="section-hint">대리점을 자유롭게 추가·제거하며(최대 5개) 영업이익율 차이가 DC율 때문인지, 프로모션 매칭 상태(절대/상대 문턱값, 품목 매칭 등) 때문인지 비교합니다. 2개 선택 시 카드형, 3개 이상 선택 시 표 형태로 자동 전환됩니다.</div>
+      </div>
+    </div>
+
+    <div class="compare-card">
+      <div class="compare-picker" id="chipRow"></div>
+      <div id="storePanel" hidden style="border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-4);background:var(--color-bg-base)">
+        <div style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:8px">비교할 대리점을 선택하세요 (최대 5개)</div>
+        <div id="checkboxList" style="display:flex;flex-direction:column;gap:8px;font-size:0.875rem"></div>
+      </div>
+      <div id="compareBody"></div>
+      <div id="verdictBanner"></div>
+    </div>
+  </div>
+  </div><!-- /#mainContent -->
+
+  <footer class="note" id="pageFooter">이 화면의 수치는 계산식 시연을 위한 예시 데이터입니다. 우측 상단 기준연월 드롭다운에서 다른 연월을 선택하면 그 시점에 저장된 분석 결과로 화면이 바뀝니다(2026-08·2026-10은 저장된 결과, 2027-02는 아직 분석되지 않은 연월 예시).</footer>
+
+</div>
+
+<script>
+  /* =========================================================================
+     기준연월 이력 조회 (DBMS 기반, 신규): 기준연월별 분석 결과를 PERIODS에 보관.
+     실제 구현에서는 이 객체가 DBMS 조회 결과로 대체된다. 화면은 여기서
+     currentPeriod가 가리키는 항목만 읽어 렌더링한다 — `.docs/02_PRD.md` 6.8절.
+     ========================================================================= */
+  var PERIODS = {
+    '2027-02': {
+      hasData: false,
+      label: '2027-02',
+      tagText: '현재월 · 아직 분석 미실행'
+    },
+    '2026-10': {
+      hasData: true,
+      label: '2026-10',
+      tagText: '10+1 · 대형제품 D/C 2건 시행',
+      pageSub: '2026년 10월에는 <b>10+1 프로모션</b>과 <b>대형 제품 D/C 프로모션</b> 2건이 동시에 시행되었습니다. 10+1은 이름과 달리 대당 무상 지급이 아니라 <b>판매수량 11대당 1대분 금액을 대리점 미수금(외상채권)에서 차감</b>하는 방식이고, 대형 제품 D/C는 수량 문턱값 없이 지정 품목마다 대당 고정 금액을 지원합니다.',
+      promoHint: '2026-10-01 ~ 2026-10-31 동안 10+1 프로모션과 대형 제품 D/C 프로모션 2건이 동시에 적용되었습니다.',
+      promoCountLabel: '2건 동시 진행',
+      promoGridHtml:
+        '<div class="promo-card">' +
+          '<div class="promo-card-head">' +
+            '<div><div class="promo-name">① 10+1 프로모션</div><div class="promo-period">2026-10-01 ~ 2026-10-31 · 전 제품군 대상</div></div>' +
+            '<span class="promo-type-badge type-flat">무상증정(11+1) · 미수금 차감</span>' +
+          '</div>' +
+          '<div class="promo-rule">' +
+            '<div class="promo-rule-desc">이름은 "10+1"이지만 실제로는 <b>판매수량을 11로 나눈 몫(내림)만큼의 대수 × 기준가</b>를 대리점 미수금(외상채권)에서 차감한다(대당 무상 지급 아님). 예: 11대 구매 시 1대분, 22대 구매 시 2대분, 33대 구매 시 3대분 차감.</div>' +
+            '<div class="example-box"><b>예시</b>: GB 55066(기준가 58,900원) 33대 판매 → 33 ÷ 11 = 3(몫) → 3대분(58,900원×3 = 176,700원)을 미수금에서 차감. 11대 미만(예: 8대)이면 차감 없음.</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="promo-card">' +
+          '<div class="promo-card-head"><div><div class="promo-name">② 대형 제품 D/C 프로모션</div><div class="promo-period">2026-10-01 ~ 2026-10-31</div></div><span class="promo-type-badge type-flat">품목별고정단가</span></div>' +
+          '<div class="promo-rule"><div class="promo-rule-desc">판매수량 문턱값 없이, 지정 품목을 팔 때마다 대당 고정 금액 D/C 지원</div>' +
+            '<div class="product-tags">' +
+              '<span class="product-tag">120L · 3,000원</span><span class="product-tag">120R · 3,000원</span><span class="product-tag">150L · 3,000원</span>' +
+              '<span class="product-tag hi">200L · 4,000원</span><span class="product-tag hi">250L · 4,000원</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>',
+      kpi: { avgOp: 10.7, avgGrowth: 3.4, storeCount: 5, promoCount: '2건', promoCountDesc: '10+1 프로모션(전 제품군) + 대형제품 D/C(정액)',
+             totalSupport: 1709760, dcSupport: 864460, promoSupport: 845300 },
+      effect: { opGap: 5.3, opYes: 11.8, opNo: 6.5, growthGap: 5.5, growthYes: 4.5, growthNo: -1.0, roi: '1.7x', roiDesc: '지원금액 1원당 매출 약 1.7원 증가 추정' },
+      groups: {
+        all:  { label: '전사 평균',      count: 5, op: 10.7, growth: 3.4, support: 341952 },
+        high: { label: '우수 (15%+)',    count: 0, op: 0,    growth: 0,   support: 0 },
+        mid:  { label: '보통 (0~15%)',   count: 5, op: 10.7, growth: 3.4, support: 341952 },
+        low:  { label: '저조 (0% 미만)', count: 0, op: 0,    growth: 0,   support: 0 }
+      },
+      tableRowsHtml:
+        row('대구달서대리점', '매출DC 6.5%', 'GB', 'GB 55066(기준가 58,900) · 33대', 1817359,
+            126341, 176700, '└ 10+1 · 33÷11=3대분 차감 · 58,900원×3', '<span class="badge badge-yes">10+1 해당 · 3대분</span><div class="threshold-note">33대 ÷ 11 = 3(몫) → 3대분 차감</div>',
+            11.2, 78, 4.1, 62) +
+        row('인천남동대리점', '매출DC 8.0%', 'AGM', 'AGM 80L(기준가 137,800) · 21대', 2662296,
+            231504, 137800, '└ 10+1 · 21÷11=1대분 차감 · 137,800원×1', '<span class="badge badge-yes">10+1 해당 · 1대분</span><div class="threshold-note">21대 ÷ 11 = 1(몫) → 1대분 차감</div>',
+            9.8, 66, 2.0, 46) +
+        row('창원대리점', '매출DC 5.0%', 'GB', 'GB 90R(기준가 86,800) · 8대', 659680,
+            34720, 0, null, '<span class="badge badge-no">10+1 미달성</span><div class="threshold-note">8대 &lt; 11대 → 차감 없음</div>',
+            6.5, 44, -1.0, 20, true) +
+        row('원주대리점', '매출DC 6.0%', 'AGM', 'AGM 70(기준가 120,200) · 45대', 5084460,
+            324540, 480800, '└ 10+1 · 45÷11=4대분 차감 · 120,200원×4', '<span class="badge badge-yes">10+1 해당 · 4대분</span><div class="threshold-note">45대 ÷ 11 = 4(몫) → 4대분 차감</div>',
+            13.5, 90, 6.2, 82) +
+        row('부산해운대대리점', '매출DC 6.5%', '대형제품(GB)', '120L(130,400)·10대, 250L(192,600)·5대', 2119795,
+            147355, 50000, '└ 대형제품 D/C · 120L 3,000원×10대 + 250L 4,000원×5대', '<span class="badge badge-yes">대형제품 D/C 해당</span>',
+            12.6, 60, 5.7, 44),
+      stores: {
+        daegu:   { name:'대구달서대리점', qtyUnit:'GB 55066 33대', dcSale:6.5, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'3대분 차감', levelDetail:'33대 ÷ 11 = 3대분 미수금 차감', levelOk:true, dcAmt:126341, promoAmt:176700, opMargin:11.2, growth:4.1 },
+        incheon: { name:'인천남동대리점', qtyUnit:'AGM 80L 21대', dcSale:8.0, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'1대분 차감', levelDetail:'21대 ÷ 11 = 1대분 미수금 차감', levelOk:true, dcAmt:231504, promoAmt:137800, opMargin:9.8, growth:2.0 },
+        changwon:{ name:'창원대리점', qtyUnit:'GB 90R 8대', dcSale:5.0, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'차감 없음', levelDetail:'8대 < 11대 → 차감 없음', levelOk:false, dcAmt:34720, promoAmt:0, opMargin:6.5, growth:-1.0 },
+        wonju:   { name:'원주대리점', qtyUnit:'AGM 70 45대', dcSale:6.0, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'4대분 차감', levelDetail:'45대 ÷ 11 = 4대분 미수금 차감', levelOk:true, dcAmt:324540, promoAmt:480800, opMargin:13.5, growth:6.2 },
+        busan:   { name:'부산해운대대리점', qtyUnit:'대형제품 120L 10대 + 250L 5대', dcSale:6.5, dcGrowth:0, baseline:null, group:'품목별고정단가 대상(수량 문턱값 없음)', level:'대형제품 D/C 해당', levelDetail:'대형제품 D/C 매칭', levelOk:true, dcAmt:147355, promoAmt:50000, opMargin:12.6, growth:5.7 }
+      },
+      defaultSelected: ['daegu', 'wonju'],
+      promoTitle: '2026년 10월 시행 프로모션',
+      effectTitle: '2026년 10월 프로모션 효과 평가 (본사 관점) — 회고 조회'
+    },
+    '2026-08': {
+      hasData: true,
+      label: '2026-08',
+      tagText: '2건 동시 진행',
+      pageSub: 'DC율로 인한 지원과 프로모션 달성으로 인한 지원을 분리해 대리점별 영업이익율 편차의 원인을 확인합니다. 8월에는 <b>10+1 프로모션</b>과 <b>대형 제품 D/C 프로모션</b>이 동시에 시행되었습니다. 10+1은 이름과 달리 대당 무상 지급이 아니라, 판매수량 11대당 1대분 금액을 대리점 미수금(외상채권)에서 차감하는 방식입니다.',
+      promoHint: '2026-08-01 ~ 2026-08-31 동안 10+1 프로모션과 대형 제품 D/C 프로모션이 동시에 적용됩니다.',
+      promoCountLabel: '2건 동시 진행',
+      promoGridHtml:
+        '<div class="promo-card">' +
+          '<div class="promo-card-head">' +
+            '<div><div class="promo-name">① 10+1 프로모션</div><div class="promo-period">2026-08-01 ~ 2026-08-31 · 전 제품군 대상</div></div>' +
+            '<span class="promo-type-badge type-flat">무상증정(11+1) · 미수금 차감</span>' +
+          '</div>' +
+          '<div class="promo-rule">' +
+            '<div class="promo-rule-desc">이름은 "10+1"이지만 실제로는 <b>판매수량을 11로 나눈 몫(내림)만큼의 대수 × 기준가</b>를 대리점 미수금(외상채권)에서 차감한다(대당 무상 지급 아님). 예: 11대 구매 시 1대분, 22대 구매 시 2대분 차감.</div>' +
+            '<div class="example-box"><b>예시</b>: AGM 80L(기준가 137,800원) 230대 판매 → 230 ÷ 11 = 20(몫) → 20대분(137,800원×20 = 2,756,000원)을 미수금에서 차감. 11대 미만이면 차감 없음.</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="promo-card">' +
+          '<div class="promo-card-head"><div><div class="promo-name">② 대형 제품 D/C 프로모션</div><div class="promo-period">2026-08-01 ~ 2026-08-31</div></div><span class="promo-type-badge type-flat">품목별고정단가</span></div>' +
+          '<div class="promo-rule"><div class="promo-rule-desc">판매수량 문턱값 없이, 지정 품목을 팔 때마다 대당 고정 금액 D/C 지원</div>' +
+            '<div class="product-tags">' +
+              '<span class="product-tag">120L · 3,000원</span><span class="product-tag">120R · 3,000원</span><span class="product-tag">150L · 3,000원</span>' +
+              '<span class="product-tag">170L · 3,000원</span><span class="product-tag">67018 · 3,000원</span>' +
+              '<span class="product-tag hi">200L · 4,000원</span><span class="product-tag hi">73010 · 4,000원</span><span class="product-tag hi">73011 · 4,000원</span>' +
+              '<span class="product-tag hi">250L · 4,000원</span><span class="product-tag hi">250R · 4,000원</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>',
+      kpi: { avgOp: 7.4, avgGrowth: 3.1, storeCount: 5, promoCount: '2건', promoCountDesc: '10+1(전 제품군) + 대형제품 D/C(정액)',
+             totalSupport: 7733153, dcSupport: 4185953, promoSupport: 3547200 },
+      effect: { opGap: 14.7, opYes: 13.3, opNo: -1.4, growthGap: 4.1, growthYes: 4.8, growthNo: 0.7, roi: '2.0x', roiDesc: '지원금액 1원당 매출 약 2.0원 증가 추정' },
+      groups: {
+        all:  { label: '전사 평균',      count: 5, op: 7.4,  growth: 3.1,  support: 1546631 },
+        high: { label: '우수 (15%+)',    count: 1, op: 16.4, growth: 12.1, support: 6708830 },
+        mid:  { label: '보통 (0~15%)',   count: 3, op: 10.4, growth: 1.7,  support: 326411  },
+        low:  { label: '저조 (0% 미만)', count: 1, op: -10.5, growth: -1.5, support: 45090 }
+      },
+      tableRowsHtml:
+        row('서울강남대리점', '매출DC 8.5% <span class="growth">+성장DC 2%</span> = 10.5%', 'AGM', 'AGM 80L(기준가 137,800) · 230대', 28366000,
+            3327870, 2756000, '└ 10+1 · 230÷11=20대분 차감 · 137,800원×20', '<span class="badge badge-yes">10+1 해당 · 20대분</span><div class="threshold-note">230대 ÷ 11 = 20(몫) → 20대분 차감</div>',
+            16.4, 78, 12.1, 70) +
+        row('서울강남대리점', '매출DC 8.5% <span class="growth">+성장DC 2%</span> = 10.5%', 'GB', 'GB 90L(기준가 86,800) · 40대', 3107440,
+            364560, 260400, '└ 10+1 · 40÷11=3대분 차감 · 86,800원×3', '<span class="badge badge-yes">10+1 해당 · 3대분</span>',
+            15.8, 74, 10.5, 66) +
+        row('대전둔산대리점', '매출DC 5.0%', 'AGM', 'AGM 70(기준가 120,200) · 45대', 5138550,
+            270450, 480800, '└ 10+1 · 45÷11=4대분 차감 · 120,200원×4', '<span class="badge badge-yes">10+1 해당 · 4대분</span><div class="threshold-note">45대 ÷ 11 = 4(몫) → 4대분 차감</div>',
+            10.9, 52, -3.5, 20, true) +
+        row('부산해운대대리점', '매출DC 6.5%', '대형제품(GB)', '120L(130,400)·10대, 250L(192,600)·5대', 2119795,
+            147355, 50000, '└ 대형제품 D/C · 120L 3,000원×10대 + 250L 4,000원×5대', '<span class="badge badge-yes">② 품목별고정단가 해당</span>',
+            12.6, 60, 5.7, 44) +
+        row('광주광산대리점', '매출DC 6.5%', 'GB', 'GB 55066(기준가 58,900) · 8대', 440572,
+            30628, 0, null, '<span class="badge badge-no">10+1 미달성</span><div class="threshold-note">8대 &lt; 11대 → 차감 없음</div>',
+            7.8, 35, 2.9, 30) +
+        row('전주완산대리점', '매출DC 5.0%', 'GB', 'GB 100L(기준가 100,200) · 9대', 856710,
+            45090, 0, null, '<span class="badge badge-no">10+1 미달성</span><div class="threshold-note">9대 &lt; 11대 → 차감 없음</div>',
+            -10.5, 10, -1.5, 12, true),
+      stores: {
+        daejeon: { name:'대전둔산대리점', qtyUnit:'AGM 70 45대', dcSale:5.0, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'4대분 차감', levelDetail:'45대 ÷ 11 = 4대분 미수금 차감', levelOk:true, dcAmt:270450, promoAmt:480800, opMargin:10.9, growth:-3.5 },
+        seoul:   { name:'서울강남대리점', qtyUnit:'AGM 230대 + GB 90L 40대', dcSale:8.5, dcGrowth:2, baseline:null, group:'11대당 1대분 차감(11+1)', level:'20+3대분 차감', levelDetail:'AGM 80L 230÷11=20대분, GB 90L 40÷11=3대분 각각 미수금 차감', levelOk:true, dcAmt:3692430, promoAmt:3016400, opMargin:16.4, growth:12.1 },
+        busan:   { name:'부산해운대대리점', qtyUnit:'대형제품 120L 10대 + 250L 5대', dcSale:6.5, dcGrowth:0, baseline:null, group:'품목별고정단가 대상(수량 문턱값 없음)', level:'해당', levelDetail:'대형제품 D/C 매칭', levelOk:true, dcAmt:147355, promoAmt:50000, opMargin:12.6, growth:5.7 },
+        gwangju: { name:'광주광산대리점', qtyUnit:'GB 55066 8대', dcSale:6.5, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'차감 없음', levelDetail:'8대 < 11대 → 차감 없음', levelOk:false, dcAmt:30628, promoAmt:0, opMargin:7.8, growth:2.9 },
+        jeonju:  { name:'전주완산대리점', qtyUnit:'GB 100L 9대', dcSale:5.0, dcGrowth:0, baseline:null, group:'11대당 1대분 차감(11+1)', level:'차감 없음', levelDetail:'9대 < 11대 → 차감 없음', levelOk:false, dcAmt:45090, promoAmt:0, opMargin:-10.5, growth:-1.5 }
+      },
+      defaultSelected: ['daejeon', 'seoul'],
+      promoTitle: '이번 달 시행 프로모션',
+      effectTitle: '이번 달 프로모션 효과 평가 (본사 관점)'
+    }
+  };
+
+  function row(storeName, dcBadgeHtml, productType, productCodeText, revenue, dcAmt, promoAmt, promoDetail, matchHtml, op, opBar, growth, growthBar, growthNeg){
+    var opClass = op >= 0 ? 'pos' : 'neg';
+    var opBarClass = op < 0 ? 'style="width:' + opBar + '%;background:var(--color-danger)"' : 'style="width:' + opBar + '%"';
+    var growthClass = growth >= 0 ? 'pos' : 'neg';
+    var growthBarClass = growthNeg ? 'growth-neg' : (growth >= 0 ? 'growth-pos' : 'growth-neg');
+    return '<tr>' +
+      '<td><div class="store-cell"><span class="store-name">' + storeName + '</span><span class="dc-badge">' + dcBadgeHtml + '</span></div></td>' +
+      '<td>' + productType + '<div class="product-code">' + productCodeText + '</div></td>' +
+      '<td class="num">' + fmt(revenue) + '</td>' +
+      '<td><div class="support-stack">' +
+        '<div class="support-line"><span class="lbl"><span class="dot dot-dc"></span>DC 지원금액</span><span class="val">' + fmt(dcAmt) + '</span></div>' +
+        '<div class="support-line"><span class="lbl"><span class="dot dot-promo"></span>프로모션 지원금액</span><span class="val">' + fmt(promoAmt) + '</span></div>' +
+        (promoDetail ? '<div class="promo-detail">' + promoDetail + '</div>' : '') +
+        '<div class="support-total"><span>총 지원금액</span><span class="val">' + fmt(dcAmt + promoAmt) + '</span></div>' +
+      '</div></td>' +
+      '<td>' + matchHtml + '</td>' +
+      '<td class="num"><div class="metric-pair"><div class="bar-wrap"><div class="bar-fill op" ' + opBarClass + '></div></div><span class="metric-num ' + opClass + '">' + op + '%</span></div></td>' +
+      '<td class="num"><div class="metric-pair"><div class="bar-wrap"><div class="bar-fill ' + growthBarClass + '" style="width:' + growthBar + '%"></div></div><span class="metric-num ' + growthClass + '">' + (growth >= 0 ? '+' : '') + growth + '%</span></div></td>' +
+    '</tr>';
+  }
+
+  var PALETTE = ['#1F3742', '#0097A9', '#EB3300', '#B5BBBD', '#4C5F68']; // design.md 데이터 시각화 원칙: ink → green → orange → gray-400 순
+  var requestedPeriod = new URLSearchParams(window.location.search).get('period');
+  var currentPeriod = (requestedPeriod && PERIODS[requestedPeriod]) ? requestedPeriod : '2026-08';
+  var STORES = PERIODS[currentPeriod].stores;
+  var selected = PERIODS[currentPeriod].defaultSelected.slice();
+  var panelOpen = false;
+  var periodMenuOpen = false;
+
+  function fmt(n){ return '₩' + n.toLocaleString('ko-KR'); }
+  function colorFor(i){ return PALETTE[i % PALETTE.length]; }
+
+  var GROUPS = PERIODS[currentPeriod].groups;
+  var activeGroup = 'all';
+
+  function renderPeriodPill(){
+    var p = PERIODS[currentPeriod];
+    document.getElementById('periodLabel').textContent = currentPeriod;
+    var pill = document.getElementById('periodPromoCount');
+    pill.className = 'select-pill' + (p.hasData ? ' multi' : '');
+    pill.innerHTML = (p.hasData ? '해당 연월 시행 프로모션' : '분석 상태') + ' <b>' + p.tagText + '</b>';
+  }
+
+  function renderPeriodMenu(){
+    var menu = document.getElementById('periodMenu');
+    menu.innerHTML = '';
+    Object.keys(PERIODS).sort().reverse().forEach(function(key){
+      var p = PERIODS[key];
+      var opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'period-option' + (key === currentPeriod ? ' current' : '');
+      opt.setAttribute('role', 'option');
+      opt.innerHTML = '<span>' + key + '</span><span class="tag ' + (p.hasData ? 'has-data' : 'no-data') + '">' + (p.hasData ? '분석 결과 있음' : '결과 없음') + '</span>';
+      opt.addEventListener('click', function(){
+        currentPeriod = key;
+        periodMenuOpen = false;
+        menu.hidden = true;
+        document.getElementById('periodTrigger').setAttribute('aria-expanded', 'false');
+        onPeriodChange();
+      });
+      menu.appendChild(opt);
+    });
+  }
+
+  function onPeriodChange(){
+    var p = PERIODS[currentPeriod];
+    renderPeriodPill();
+    document.getElementById('noDataBanner').hidden = p.hasData;
+    document.getElementById('noDataPeriod').textContent = currentPeriod;
+    document.getElementById('mainContent').hidden = !p.hasData;
+    if (!p.hasData) { renderPeriodMenu(); return; }
+
+    document.getElementById('periodPageSub').innerHTML = p.pageSub;
+    document.getElementById('promoSectionTitle').textContent = p.promoTitle;
+    document.getElementById('promoSectionHint').textContent = p.promoHint;
+    document.getElementById('promoGrid').innerHTML = p.promoGridHtml;
+    document.getElementById('effectSectionTitle').textContent = p.effectTitle;
+
+    document.getElementById('topKpiRow').innerHTML =
+      '<div class="kpi-card"><div class="kpi-label">평균 영업이익율</div><div class="kpi-value">' + p.kpi.avgOp + '%</div><div class="kpi-delta">대리점 ' + p.kpi.storeCount + '곳 평균</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">평균 매출증감율</div><div class="kpi-value accent">' + (p.kpi.avgGrowth >= 0 ? '+' : '') + p.kpi.avgGrowth + '%</div><div class="kpi-delta">대리점 ' + p.kpi.storeCount + '곳 평균</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">' + p.promoTitle + '</div><div class="kpi-value">' + p.kpi.promoCount + '</div><div class="kpi-delta">' + p.kpi.promoCountDesc + '</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">총 지원금액 (DC + 프로모션)</div><div class="kpi-value warn">' + fmt(p.kpi.totalSupport) + '</div><div class="kpi-split">' +
+        '<span><span class="dot" style="background:var(--sebang-gray)"></span>DC 지원 ' + fmt(p.kpi.dcSupport) + '</span>' +
+        '<span><span class="dot" style="background:var(--sebang-green)"></span>프로모션 지원 ' + fmt(p.kpi.promoSupport) + '</span>' +
+      '</div></div>';
+
+    document.getElementById('effectKpiRow').innerHTML =
+      '<div class="kpi-card"><div class="kpi-label">해당 vs 미해당 · 영업이익율</div><div class="kpi-value accent">+' + p.effect.opGap + '%p</div><div class="kpi-delta">해당 ' + p.effect.opYes + '% · 미해당 ' + p.effect.opNo + '%</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">해당 vs 미해당 · 매출증감율</div><div class="kpi-value accent">+' + p.effect.growthGap + '%p</div><div class="kpi-delta">해당 ' + p.effect.growthYes + '% · 미해당 ' + p.effect.growthNo + '%</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">프로모션 ROI (추정)</div><div class="kpi-value accent">' + p.effect.roi + '</div><div class="kpi-delta">' + p.effect.roiDesc + '</div></div>';
+
+    document.getElementById('resultTbody').innerHTML = p.tableRowsHtml;
+
+    STORES = p.stores;
+    GROUPS = p.groups;
+    activeGroup = 'all';
+    selected = p.defaultSelected.slice();
+    renderGroupTabs();
+    renderGroupStats();
+    renderAll();
+  }
+
+  function renderGroupTabs(){
+    var tabs = document.getElementById('groupTabs');
+    tabs.innerHTML = '';
+    Object.keys(GROUPS).forEach(function(key){
+      var btn = document.createElement('button');
+      var isActive = key === activeGroup;
+      btn.textContent = GROUPS[key].label;
+      btn.style.cssText = 'padding:6px 16px;border-radius:999px;font-size:0.8125rem;font-weight:600;cursor:pointer;' +
+        (isActive
+          ? 'background:var(--sebang-ink);color:#fff;border:1px solid var(--sebang-ink);'
+          : 'background:var(--color-bg-surface);color:var(--color-text-primary);border:1px solid var(--color-border);');
+      btn.addEventListener('click', function(){ activeGroup = key; renderGroupTabs(); renderGroupStats(); });
+      tabs.appendChild(btn);
+    });
+  }
+
+  function renderGroupStats(){
+    var g = GROUPS[activeGroup];
+    var opColor = g.op >= 13 ? 'var(--sebang-green-700)' : (g.op < 0 ? 'var(--color-danger)' : 'var(--color-text-primary)');
+    var growthColor = g.growth >= 0 ? 'var(--sebang-green-700)' : 'var(--color-danger)';
+    document.getElementById('groupStats').innerHTML =
+      '<div class="kpi-card"><div class="kpi-label">대리점 수</div><div class="kpi-value">' + g.count + '곳</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">평균 영업이익율</div><div class="kpi-value" style="color:' + opColor + '">' + g.op + '%</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">평균 매출증감율</div><div class="kpi-value" style="color:' + growthColor + '">' + (g.growth >= 0 ? '+' : '') + g.growth + '%</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">평균 총 지원금액</div><div class="kpi-value">' + fmt(Math.round(g.support)) + '</div></div>';
+  }
+
+  function renderChips(){
+    var chipRowEl = document.getElementById('chipRow');
+    chipRowEl.innerHTML = '';
+    selected.forEach(function(id, i){
+      var s = STORES[id];
+      var chip = document.createElement('div');
+      chip.className = 'store-chip';
+      chip.innerHTML = '<span class="swatch" style="background:' + colorFor(i) + '"></span>' + s.name +
+        ' <span data-remove="' + id + '" style="cursor:pointer;margin-left:4px;color:var(--color-text-secondary);font-weight:700">×</span>';
+      chipRowEl.appendChild(chip);
+    });
+    var addBtn = document.createElement('button');
+    addBtn.className = 'store-chip';
+    addBtn.style.cursor = 'pointer';
+    addBtn.style.background = 'var(--color-bg-base)';
+    addBtn.style.border = '1px dashed var(--color-border)';
+    addBtn.textContent = '+ 비교 대리점 추가';
+    addBtn.addEventListener('click', function(){
+      panelOpen = !panelOpen;
+      document.getElementById('storePanel').hidden = !panelOpen;
+    });
+    chipRowEl.appendChild(addBtn);
+    chipRowEl.querySelectorAll('[data-remove]').forEach(function(x){
+      x.addEventListener('click', function(e){
+        var id = e.target.getAttribute('data-remove');
+        selected = selected.filter(function(s){ return s !== id; });
+        renderAll();
+      });
+    });
+  }
+
+  function renderCheckboxList(){
+    var list = document.getElementById('checkboxList');
+    list.innerHTML = '';
+    Object.keys(STORES).forEach(function(id){
+      var s = STORES[id];
+      var row = document.createElement('label');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.cursor = 'pointer';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = selected.indexOf(id) !== -1;
+      cb.addEventListener('change', function(){
+        if (cb.checked) {
+          if (selected.length >= 5) { cb.checked = false; alert('최대 5개까지 비교할 수 있습니다.'); return; }
+          selected.push(id);
+        } else {
+          selected = selected.filter(function(x){ return x !== id; });
+        }
+        renderAll();
+      });
+      row.appendChild(cb);
+      row.appendChild(document.createTextNode(s.name + ' · ' + s.qtyUnit));
+      list.appendChild(row);
+    });
+  }
+
+  function renderCard(id, i){
+    var s = STORES[id];
+    var color = colorFor(i);
+    var levelColor = s.levelOk === true ? 'var(--sebang-green-700)' : 'var(--color-danger)';
+    var opColor = s.opMargin >= 13 ? 'var(--sebang-green-700)' : 'var(--color-danger)';
+    var growthColor = s.growth >= 0 ? 'var(--sebang-green-700)' : 'var(--color-danger)';
+    return '<div>' +
+      '<div class="compare-col-title"><span class="swatch" style="background:' + color + '"></span>' + s.name + ' · ' + s.qtyUnit + '</div>' +
+      '<div class="factor-row"><span class="factor-label">DC 구성</span><span class="factor-value">매출DC ' + s.dcSale + '%' + (s.dcGrowth ? '<small>+성장DC ' + s.dcGrowth + '% = 총 ' + (s.dcSale + s.dcGrowth) + '%</small>' : '<small>성장DC 없음</small>') + '</span></div>' +
+      '<div class="factor-row"><span class="factor-label">기준값/그룹</span><span class="factor-value">' + (s.baseline ? s.baseline + '대' : '-') + '<small>' + s.group + '</small></span></div>' +
+      '<div class="factor-row"><span class="factor-label">프로모션 매칭 상태</span><span class="factor-value" style="color:' + levelColor + '">' + s.level + '<small>' + s.levelDetail + '</small></span></div>' +
+      '<div class="factor-row"><span class="factor-label">DC 지원금액</span><span class="factor-value">' + fmt(s.dcAmt) + '</span></div>' +
+      '<div class="factor-row"><span class="factor-label">프로모션 지원금액</span><span class="factor-value">' + fmt(s.promoAmt) + '</span></div>' +
+      '<div class="factor-row"><span class="factor-label">총 지원금액</span><span class="factor-value">' + fmt(s.dcAmt + s.promoAmt) + '</span></div>' +
+      '<div class="factor-row"><span class="factor-label">영업이익율</span><span class="factor-value" style="color:' + opColor + '">' + s.opMargin + '%</span></div>' +
+      '<div class="factor-row"><span class="factor-label">매출증감율</span><span class="factor-value" style="color:' + growthColor + '">' + (s.growth >= 0 ? '+' : '') + s.growth + '%</span></div>' +
+      '</div>';
+  }
+
+  function renderTable(){
+    var rows = [
+      ['DC 구성', function(id){ var s = STORES[id]; return '매출DC ' + s.dcSale + '%' + (s.dcGrowth ? ' +성장DC ' + s.dcGrowth + '%' : ''); }],
+      ['기준값/그룹', function(id){ var s = STORES[id]; return (s.baseline ? s.baseline + '대 · ' : '') + s.group; }],
+      ['프로모션 매칭 상태', function(id){ return STORES[id].level; }],
+      ['DC 지원금액', function(id){ return fmt(STORES[id].dcAmt); }],
+      ['프로모션 지원금액', function(id){ return fmt(STORES[id].promoAmt); }],
+      ['총 지원금액', function(id){ return fmt(STORES[id].dcAmt + STORES[id].promoAmt); }],
+      ['영업이익율', function(id){ return STORES[id].opMargin + '%'; }],
+      ['매출증감율', function(id){ var g = STORES[id].growth; return (g >= 0 ? '+' : '') + g + '%'; }]
+    ];
+    var html = '<div style="overflow-x:auto"><table class="mini-table" style="font-size:0.8125rem;width:100%"><thead><tr><th>지표</th>' +
+      selected.map(function(id){ return '<th>' + STORES[id].name + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function(r){
+      html += '<tr><td class="rowhead">' + r[0] + '</td>' + selected.map(function(id){ return '<td>' + r[1](id) + '</td>'; }).join('') + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderVerdict(){
+    var items = selected.map(function(id){ return STORES[id]; });
+    var maxOp = items.reduce(function(a, b){ return a.opMargin > b.opMargin ? a : b; });
+    var minOp = items.reduce(function(a, b){ return a.opMargin < b.opMargin ? a : b; });
+    var dcSet = {}; items.forEach(function(s){ dcSet[s.dcSale + s.dcGrowth] = true; });
+    var promoSet = {}; items.forEach(function(s){ promoSet[s.promoAmt > 0] = true; });
+    var text = '선택된 ' + items.length + '개 대리점 중 영업이익율이 가장 높은 곳은 <b>' + maxOp.name + '</b>(' + maxOp.opMargin + '%), 가장 낮은 곳은 <b>' + minOp.name + '</b>(' + minOp.opMargin + '%)입니다. ';
+    if (Object.keys(dcSet).length > 1) text += '선택된 대리점 간 <b>DC율 구성 자체가 다릅니다</b> — 이는 매출 규모 구간과 전년대비 성장 실적 차이에서 비롯됩니다(등급 차이가 아님). ';
+    if (Object.keys(promoSet).length > 1) text += '또한 일부 대리점만 이번 달 프로모션 조건(절대/상대 문턱값 달성 또는 품목 매칭)을 충족해 프로모션 지원금액 차이가 발생했습니다.';
+    return '<div class="verdict-banner"><span class="verdict-icon">!</span><span>' + text + '</span></div>';
+  }
+
+  function renderCompareBody(){
+    var body = document.getElementById('compareBody');
+    var verdict = document.getElementById('verdictBanner');
+    if (selected.length < 2) {
+      body.innerHTML = '<div style="padding:var(--space-6) 0;text-align:center;color:var(--color-text-secondary);font-size:0.875rem">비교하려면 대리점을 2개 이상 선택하세요.</div>';
+      verdict.innerHTML = '';
+      return;
+    }
+    if (selected.length === 2) {
+      body.innerHTML = '<div class="compare-grid">' + selected.map(function(id, i){ return renderCard(id, i); }).join('') + '</div>';
+    } else {
+      body.innerHTML = renderTable();
+    }
+    verdict.innerHTML = renderVerdict();
+  }
+
+  function renderAll(){
+    renderChips();
+    renderCheckboxList();
+    renderCompareBody();
+  }
+
+  /* ---------- 기준연월 드롭다운 개폐 ---------- */
+  var periodTrigger = document.getElementById('periodTrigger');
+  var periodMenuEl = document.getElementById('periodMenu');
+  periodTrigger.addEventListener('click', function(e){
+    e.stopPropagation();
+    periodMenuOpen = !periodMenuOpen;
+    periodMenuEl.hidden = !periodMenuOpen;
+    periodTrigger.setAttribute('aria-expanded', String(periodMenuOpen));
+    if (periodMenuOpen) renderPeriodMenu();
+  });
+  document.addEventListener('click', function(e){
+    if (periodMenuOpen && !periodMenuEl.contains(e.target) && !periodTrigger.contains(e.target)) {
+      periodMenuOpen = false;
+      periodMenuEl.hidden = true;
+      periodTrigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  renderPeriodPill();
+  onPeriodChange();
+</script>
+</body>
+</html>

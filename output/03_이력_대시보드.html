@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로모션 이력 대시보드 — 세방전지 차량대리점팀</title>
+<link rel="stylesheet" href="../sebang-design-system/sebang.css">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .history-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+  .history-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); background: var(--color-bg-surface); display: flex; flex-direction: column; gap: var(--space-3); }
+  .history-card.empty { background: var(--color-bg-base); border-style: dashed; color: var(--color-text-secondary); }
+  .history-period { font-size: 1.125rem; font-weight: 700; }
+  .history-tag { font-size: 0.6875rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); width: fit-content; }
+  .history-tag.has-data { background: var(--sebang-green-50); color: var(--sebang-green-700); }
+  .history-tag.no-data { background: #F2F3F3; color: var(--color-text-secondary); }
+  .history-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); font-size: 0.8125rem; }
+  .history-metrics .m-label { color: var(--color-text-secondary); font-size: 0.6875rem; }
+  .history-metrics .m-value { font-weight: 700; font-size: 0.9375rem; }
+  .history-card .card-link { margin-top: auto; text-decoration: none; }
+
+  .chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+  .chart-panel { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-surface); padding: var(--space-4) var(--space-5); }
+  .chart-title { font-size: 0.875rem; font-weight: 700; margin-bottom: 2px; }
+  .chart-sub { font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: var(--space-3); }
+  .chart-svg { width: 100%; height: auto; overflow: visible; }
+  .chart-svg .gridline { stroke: var(--color-border); stroke-width: 1; }
+  .chart-svg .zero-line { stroke: var(--color-text-secondary); stroke-width: 1; }
+  .chart-svg .axis-label { fill: var(--color-text-secondary); font-size: 10px; font-family: var(--font-family-base); }
+  .chart-svg .bar-label { fill: var(--color-text-primary); font-size: 11px; font-weight: 700; font-family: var(--font-family-base); }
+  .chart-svg .bar-mark { rx: 3; cursor: pointer; }
+  .chart-svg .bar-mark.muted { fill: var(--sebang-light-gray); }
+  .chart-svg .bar-mark:hover { opacity: 0.85; }
+
+  @media (max-width: 960px) {
+    .history-grid { grid-template-columns: 1fr; }
+    .chart-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="crumb-row">
+    <a href="01_실적업로드.html">실적 업로드</a>
+    <span class="sep">/</span>
+    <a href="02_분석결과화면.html">분석 결과</a>
+    <span class="sep">/</span>
+    <span class="current">이력 조회</span>
+  </div>
+
+  <div class="topbar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 595.276 231.696" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SEBANG">
+        <path fill="currentColor" d="M 124.988281 126.054688 C 123.054688 122.753906 119.492188 120.503906 114.375 119.367188 L 84.269531 112.652344 C 81.96875 112.136719 80.734375 111.574219 80.273438 110.824219 C 80.003906 110.386719 79.96875 109.835938 80.148438 109.148438 L 81.5625 105.273438 L 131.269531 105.273438 L 138.089844 84.414062 L 84.535156 84.414062 C 76.113281 84.414062 70.261719 85.457031 66.125 87.707031 C 61.179688 90.398438 57.871094 94.660156 56.019531 100.742188 L 53.300781 109.199219 C 51.847656 113.941406 52.394531 119.035156 54.789062 123.179688 C 57.144531 127.242188 60.996094 129.984375 65.910156 131.109375 L 94.691406 137.535156 C 96.339844 137.882812 97.414062 138.433594 97.878906 139.167969 C 98.167969 139.613281 98.226562 140.140625 98.089844 140.726562 L 96.664062 145.066406 L 46.699219 145.066406 L 39.976562 165.894531 L 91.207031 165.894531 C 102.574219 165.894531 108.519531 165.3125 113.71875 161.8125 C 119.089844 158.203125 121.214844 152.398438 123.253906 145.734375 L 125.683594 137.570312 C 127.023438 133.136719 126.78125 129.152344 124.988281 126.054688 "/>
+        <path fill="currentColor" d="M 347.71875 154.867188 L 326.140625 154.867188 L 331.789062 140.066406 C 332.9375 137.015625 333.984375 135.929688 337.53125 135.929688 L 353.6875 135.929688 Z M 380.507812 119.90625 C 378.179688 116.730469 374.046875 115.117188 368.21875 115.117188 L 332.945312 115.117188 C 320.570312 115.117188 312.644531 120.042969 308.710938 130.207031 L 282.8125 196.617188 L 310.128906 196.617188 L 318.355469 175.246094 L 341.074219 175.246094 L 334.207031 196.617188 L 360.980469 196.617188 L 381.488281 132.738281 C 383.140625 127.484375 382.808594 123.039062 380.507812 119.90625 "/>
+        <path fill="currentColor" d="M 509.464844 136.003906 L 548.054688 136.003906 L 554.925781 115.117188 L 503.15625 115.117188 C 491.136719 115.117188 484.535156 119.425781 481.058594 129.535156 L 464.992188 179.796875 C 463.464844 184.363281 463.847656 188.574219 466.070312 191.671875 C 468.382812 194.882812 472.429688 196.585938 477.765625 196.585938 L 513.4375 196.585938 C 521.953125 196.585938 525.527344 196.0625 529.375 194.261719 C 534.035156 192.085938 536.683594 188.644531 538.820312 181.988281 L 546.675781 157.476562 C 547.824219 153.910156 547.648438 151.046875 546.140625 148.980469 C 544.597656 146.859375 541.757812 145.734375 537.917969 145.734375 L 512.539062 145.734375 L 506.097656 165.859375 L 517.222656 165.859375 L 514.71875 173.722656 C 514.128906 175.375 513.625 175.683594 511.53125 175.683594 L 493.078125 175.683594 L 504.855469 139.027344 C 505.691406 136.457031 507.015625 136.003906 509.464844 136.003906 "/>
+        <path fill="currentColor" d="M 447.175781 115.117188 L 434.335938 155.144531 L 424.21875 120.222656 C 423.285156 116.882812 420.730469 115.117188 416.828125 115.117188 L 399.117188 115.117188 L 373.203125 195.882812 L 372.984375 196.582031 L 399.742188 196.582031 L 412.410156 157.117188 L 422.769531 191.714844 C 423.328125 193.535156 424.980469 196.582031 429.792969 196.582031 L 447.804688 196.582031 L 473.941406 115.117188 Z M 447.175781 115.117188 "/>
+        <path fill="currentColor" d="M 255.085938 172.742188 C 254.132812 175.535156 252.683594 175.675781 250.398438 175.675781 L 230.8125 175.675781 L 233.957031 165.878906 L 257.300781 165.878906 Z M 294.84375 119.371094 C 292.828125 116.625 289 115.117188 284.054688 115.117188 L 169.433594 115.117188 L 171.898438 107.378906 C 172.519531 105.367188 173.898438 105.269531 176.292969 105.269531 L 215.359375 105.269531 L 222.046875 84.414062 L 175.734375 84.414062 C 167.316406 84.414062 161.460938 85.457031 157.324219 87.707031 C 152.382812 90.398438 149.066406 94.664062 147.210938 100.746094 L 126.296875 165.878906 L 196.300781 165.878906 L 202.992188 145.0625 L 159.882812 145.0625 L 163.023438 135.230469 L 267.136719 135.230469 L 264.605469 143.070312 C 264.179688 144.363281 263.558594 145.0625 261.535156 145.0625 L 213.859375 145.082031 L 197.34375 196.617188 L 251.054688 196.617188 C 261.484375 196.617188 266.25 195.878906 270.664062 193.582031 C 274.40625 191.644531 276.871094 188.230469 278.664062 182.527344 L 282.601562 170.21875 C 283.867188 166.453125 284.804688 162.164062 282.1875 158.976562 L 279.359375 155.8125 L 283.808594 152.714844 C 288.523438 149.699219 289.851562 147.917969 291.671875 142.113281 L 295.675781 129.585938 C 296.992188 125.433594 296.699219 121.898438 294.84375 119.371094 "/>
+      </svg>
+      <div class="brand-divider"></div>
+      <div>
+        <div class="brand-title">프로모션 효과 시뮬레이션 에이전트</div>
+        <div class="brand-sub">세방전지 · 국내영업본부 차량대리점팀</div>
+      </div>
+    </div>
+    <div class="context-controls">
+      <a href="01_실적업로드.html" class="btn-primary" style="text-decoration:none;display:inline-block">+ 새 실적 업로드</a>
+    </div>
+  </div>
+
+  <h1 class="page-title">기준연월별 프로모션 이력 대시보드</h1>
+  <p class="page-sub">기준연월별로 저장된 분석 결과를 한눈에 비교합니다. 예를 들어 지금(2027-02) 시점에서도 2026년 10월에 시행했던 10+1 프로모션의 효과를 다시 확인할 수 있습니다.</p>
+
+  <div class="info-banner">
+    <span class="info-icon">i</span>
+    <div>
+      아직 3개 기준연월의 결과만 저장되어 있습니다 — <b>2026-08</b>(AGM Level up + 대형제품 D/C), <b>2026-10</b>(10+1 + 대형제품 D/C), <b>2027-02</b>(현재월, 아직 분석 미실행). 카드의 "결과 보기"를 누르면 해당 연월의 상세 분석 화면으로 이동합니다.
+    </div>
+  </div>
+
+  <!-- 기준연월 카드 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">기준연월 목록</div>
+        <div class="section-hint">최신순으로 정렬되어 있습니다.</div>
+      </div>
+    </div>
+    <div class="history-grid">
+      <div class="history-card empty">
+        <div class="history-tag no-data">결과 없음</div>
+        <div class="history-period">2027-02</div>
+        <div style="font-size:0.8125rem">아직 실적 파일이 업로드되지 않았습니다.</div>
+        <a href="01_실적업로드.html" class="btn-secondary card-link" style="text-align:center">실적 업로드하기</a>
+      </div>
+
+      <div class="history-card">
+        <div class="history-tag has-data">분석 결과 있음</div>
+        <div class="history-period">2026-10</div>
+        <div style="font-size:0.75rem;color:var(--color-text-secondary)">10+1 프로모션 + 대형제품 D/C, 2건 동시 진행</div>
+        <div class="history-metrics">
+          <div><div class="m-label">평균 영업이익율</div><div class="m-value">10.7%</div></div>
+          <div><div class="m-label">평균 매출증감율</div><div class="m-value" style="color:var(--sebang-green-700)">+3.4%</div></div>
+          <div><div class="m-label">대리점 수</div><div class="m-value">5곳</div></div>
+          <div><div class="m-label">총 지원금액</div><div class="m-value">₩1,709,760</div></div>
+        </div>
+        <a href="02_분석결과화면.html?period=2026-10" class="btn-primary card-link" style="text-align:center">결과 보기 →</a>
+      </div>
+
+      <div class="history-card">
+        <div class="history-tag has-data">분석 결과 있음</div>
+        <div class="history-period">2026-08</div>
+        <div style="font-size:0.75rem;color:var(--color-text-secondary)">AGM Level up + 대형제품 D/C, 2건 동시 진행</div>
+        <div class="history-metrics">
+          <div><div class="m-label">평균 영업이익율</div><div class="m-value">7.4%</div></div>
+          <div><div class="m-label">평균 매출증감율</div><div class="m-value" style="color:var(--sebang-green-700)">+3.1%</div></div>
+          <div><div class="m-label">대리점 수</div><div class="m-value">5곳</div></div>
+          <div><div class="m-label">총 지원금액</div><div class="m-value">₩5,609,368</div></div>
+        </div>
+        <a href="02_분석결과화면.html?period=2026-08" class="btn-primary card-link" style="text-align:center">결과 보기 →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 추이 차트 -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">프로모션 시행별(기준연월별) 추이</div>
+        <div class="section-hint">각 기준연월의 실적을 독립적으로 비교합니다.</div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-panel">
+        <div class="chart-title">평균 영업이익율</div>
+        <div class="chart-sub">대리점 실적 기준으로 산정되는 영업이익율 평균(%)</div>
+        <svg class="chart-svg" id="chartOpMargin" viewBox="0 0 300 190"></svg>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-title">평균 매출증감율</div>
+        <div class="chart-sub">전월 대비 매출 증감율 평균(%) · 양수=녹색, 음수=주황</div>
+        <svg class="chart-svg" id="chartGrowth" viewBox="0 0 300 190"></svg>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-title">총 지원금액 (DC + 프로모션)</div>
+        <div class="chart-sub">회색=DC 지원금액, 녹색=프로모션 지원금액</div>
+        <svg class="chart-svg" id="chartSupport" viewBox="0 0 300 190"></svg>
+        <div class="legend" style="margin-top:8px">
+          <span class="legend-item"><span class="legend-dot" style="background:var(--sebang-gray)"></span>DC 지원금액</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--sebang-green)"></span>프로모션 지원금액</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">차트 데이터는 분석 결과 화면의 2026-08·2026-10 데이터와 동일한 시연용 예시 값입니다.</footer>
+
+</div>
+
+<script>
+  /* 기준연월별 요약 지표 — 02_분석결과화면.html의 PERIODS와 동일한 값(시연용 가상 값) */
+  var HISTORY = [
+    { period: '2026-08', hasData: true, opMargin: 7.4,  growth: 3.1, dcSupport: 4289368, promoSupport: 1320000 },
+    { period: '2026-10', hasData: true, opMargin: 10.7, growth: 3.4, dcSupport: 864460,  promoSupport: 845300 },
+    { period: '2027-02', hasData: false }
+  ];
+
+  var GREEN = '#0097A9';
+  var ORANGE = '#EB3300';
+  var GRAY = getComputedCssVar('--sebang-gray') || '#A2AAAD';
+
+  function getComputedCssVar(name){
+    try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+    catch(e){ return ''; }
+  }
+
+  function svgEl(tag, attrs){
+    var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs).forEach(function(k){ el.setAttribute(k, attrs[k]); });
+    return el;
+  }
+
+  /* 단일 값 막대 차트: 0 기준선 위/아래로 값 표시, 데이터 없는 기간은 회색 점선 자리표시자 */
+  function renderSingleBarChart(svgId, points, opts){
+    var svg = document.getElementById(svgId);
+    var W = 300, H = 190;
+    var padTop = 24, padBottom = 30, padSide = 20;
+    var plotH = H - padTop - padBottom;
+    var barW = 56;
+    var gap = (W - padSide * 2 - barW * points.length) / (points.length - 1 || 1);
+
+    var vals = points.filter(function(p){ return p.hasData; }).map(function(p){ return p.value; });
+    var maxAbs = Math.max.apply(null, vals.map(function(v){ return Math.abs(v); }).concat([1]));
+    var scale = (plotH / 2 - 8) / maxAbs; // 0선을 세로 중앙에 두고 위/아래로 확장
+    var zeroY = padTop + plotH / 2;
+
+    // 0 기준선
+    svg.appendChild(svgEl('line', { x1: padSide, y1: zeroY, x2: W - padSide, y2: zeroY, class: 'zero-line' }));
+
+    points.forEach(function(p, i){
+      var x = padSide + i * (barW + gap);
+      if (!p.hasData) {
+        svg.appendChild(svgEl('rect', { x: x, y: zeroY - 2, width: barW, height: 4, fill: 'none', stroke: '#D9D9D8', 'stroke-dasharray': '3,3', rx: 2 }));
+        var t = svgEl('text', { x: x + barW/2, y: zeroY + 22, class: 'axis-label', 'text-anchor': 'middle' });
+        t.textContent = '분석 대기';
+        svg.appendChild(t);
+      } else {
+        var h = Math.abs(p.value) * scale;
+        var y = p.value >= 0 ? zeroY - h : zeroY;
+        var color = opts.colorFn ? opts.colorFn(p.value) : GREEN;
+        var bar = svgEl('rect', { x: x, y: y, width: barW, height: Math.max(h, 2), fill: color, rx: 3, class: 'bar-mark' });
+        var titleEl = svgEl('title', {});
+        titleEl.textContent = p.period + ' · ' + opts.fmt(p.value);
+        bar.appendChild(titleEl);
+        svg.appendChild(bar);
+
+        var label = svgEl('text', { x: x + barW/2, y: p.value >= 0 ? y - 6 : y + h + 14, class: 'bar-label', 'text-anchor': 'middle' });
+        label.textContent = opts.fmt(p.value);
+        svg.appendChild(label);
+      }
+      var axisLabel = svgEl('text', { x: x + barW/2, y: H - 8, class: 'axis-label', 'text-anchor': 'middle' });
+      axisLabel.textContent = p.period;
+      svg.appendChild(axisLabel);
+    });
+  }
+
+  /* 2세그먼트 스택 막대(DC/프로모션 지원금액) */
+  function renderStackedBarChart(svgId, points){
+    var svg = document.getElementById(svgId);
+    var W = 300, H = 190;
+    var padTop = 24, padBottom = 30, padSide = 20;
+    var plotH = H - padTop - padBottom;
+    var baseY = H - padBottom;
+    var barW = 56;
+    var gap = (W - padSide * 2 - barW * points.length) / (points.length - 1 || 1);
+
+    var totals = points.filter(function(p){ return p.hasData; }).map(function(p){ return p.dcSupport + p.promoSupport; });
+    var maxTotal = Math.max.apply(null, totals.concat([1]));
+    var scale = (plotH - 20) / maxTotal;
+
+    points.forEach(function(p, i){
+      var x = padSide + i * (barW + gap);
+      if (!p.hasData) {
+        svg.appendChild(svgEl('rect', { x: x, y: baseY - 4, width: barW, height: 4, fill: 'none', stroke: '#D9D9D8', 'stroke-dasharray': '3,3', rx: 2 }));
+        var t = svgEl('text', { x: x + barW/2, y: baseY + 22, class: 'axis-label', 'text-anchor': 'middle' });
+        t.textContent = '분석 대기';
+        svg.appendChild(t);
+      } else {
+        var dcH = p.dcSupport * scale;
+        var promoH = p.promoSupport * scale;
+        var dcRect = svgEl('rect', { x: x, y: baseY - dcH, width: barW, height: Math.max(dcH, 1), fill: GRAY, class: 'bar-mark' });
+        var dcTitle = svgEl('title', {}); dcTitle.textContent = p.period + ' · DC 지원 ₩' + p.dcSupport.toLocaleString('ko-KR');
+        dcRect.appendChild(dcTitle);
+        svg.appendChild(dcRect);
+
+        var promoRect = svgEl('rect', { x: x, y: baseY - dcH - promoH - 2, width: barW, height: Math.max(promoH, 1), fill: GREEN, rx: 3, class: 'bar-mark' });
+        var promoTitle = svgEl('title', {}); promoTitle.textContent = p.period + ' · 프로모션 지원 ₩' + p.promoSupport.toLocaleString('ko-KR');
+        promoRect.appendChild(promoTitle);
+        svg.appendChild(promoRect);
+
+        var total = p.dcSupport + p.promoSupport;
+        var label = svgEl('text', { x: x + barW/2, y: baseY - dcH - promoH - 8, class: 'bar-label', 'text-anchor': 'middle' });
+        label.textContent = '₩' + Math.round(total/10000) + '만';
+        svg.appendChild(label);
+      }
+      var axisLabel = svgEl('text', { x: x + barW/2, y: H - 8, class: 'axis-label', 'text-anchor': 'middle' });
+      axisLabel.textContent = p.period;
+      svg.appendChild(axisLabel);
+    });
+  }
+
+  renderSingleBarChart('chartOpMargin', HISTORY.map(function(h){ return { period: h.period, hasData: h.hasData, value: h.opMargin }; }),
+    { fmt: function(v){ return v + '%'; }, colorFn: function(){ return GREEN; } });
+
+  renderSingleBarChart('chartGrowth', HISTORY.map(function(h){ return { period: h.period, hasData: h.hasData, value: h.growth }; }),
+    { fmt: function(v){ return (v >= 0 ? '+' : '') + v + '%'; }, colorFn: function(v){ return v >= 0 ? GREEN : ORANGE; } });
+
+  renderStackedBarChart('chartSupport', HISTORY);
+</script>
+</body>
+</html>
