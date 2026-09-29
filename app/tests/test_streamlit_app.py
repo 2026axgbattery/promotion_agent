@@ -62,39 +62,84 @@ def test_analysis_page_prompts_when_nothing_uploaded_yet():
     assert any("아직 분석한 워크북이 없습니다" in text for text in info_texts)
 
 
-def test_upload_then_analysis_page_renders_result_table():
+def _html_bodies(at) -> str:
+    return "\n".join(el.proto.body for el in at.get("html"))
+
+
+def test_upload_auto_navigates_to_dashboard():
     workbook_path = Path(__file__).resolve().parents[2] / "업로드 실적(8월).xlsx"
     if not workbook_path.exists():
         pytest.skip("업로드 실적(8월).xlsx가 없습니다")
 
-    at = AppTest.from_file(str(APP_SCRIPT), default_timeout=60)
+    at = AppTest.from_file(str(APP_SCRIPT), default_timeout=90)
+    at.run()
+    at.file_uploader(key="workbook_file").upload(
+        "업로드 실적(8월).xlsx", workbook_path.read_bytes(),
+        mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    # 업로드만 하고 "분석 결과"를 따로 누르지 않아도 대시보드가 떠야 한다(st.switch_page).
+    at.run()
+    assert not at.exception
+    assert any("결과 화면으로 이동" in t.value for t in at.toast)
+
+    bodies = _html_bodies(at)
+    for title in [
+        "프로모션 분석 대시보드", "총 매출액", "총 지원금액", "평균 영업이익율", "프로모션 지원 대리점",
+        "지원유형별 지원금액", "프로모션 시행 내용", "대리점별 지원금액 TOP", "프로모션 효과 평가",
+        "대리점 그룹별 효과 비교", "프로모션 장단점 분석",
+    ]:
+        assert title in bodies, title
+    # 화면에 들어올 때 막대·숫자를 애니메이션하는 스크립트가 붙어 있어야 한다.
+    assert "IntersectionObserver" in bodies
+
+    subheaders = [h.value for h in at.subheader]
+    assert any("편차 원인 구분" in text for text in subheaders)
+    assert any("영업이익율 × 매출증감율" in text for text in subheaders)
+    assert [t.label for t in at.tabs] == [
+        "대리점 단위 요약", "지원유형별 지원금액 내역", "제품군별 판매수량 · 지원금액", "문턱값 근접도 전체",
+    ]
+    assert len(at.dataframe) >= 1
+
+
+def test_revisiting_upload_page_does_not_reanalyze_or_redirect():
+    workbook_path = Path(__file__).resolve().parents[2] / "업로드 실적(8월).xlsx"
+    if not workbook_path.exists():
+        pytest.skip("업로드 실적(8월).xlsx가 없습니다")
+
+    at = AppTest.from_file(str(APP_SCRIPT), default_timeout=90)
     at.run()
     at.file_uploader(key="workbook_file").upload(
         "업로드 실적(8월).xlsx", workbook_path.read_bytes(),
         mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     at.run()
-    assert not at.exception
-
-    at.switch_page("views/analysis.py")
+    at.switch_page("views/upload.py")
     at.run()
     assert not at.exception
-    assert len(at.dataframe) >= 1
-    subheaders = [h.value for h in at.subheader]
-    assert any("대리점 단위 요약" in text for text in subheaders)
-    assert any("프로모션 시행 내용" in text for text in subheaders)
-    assert any("제품군별" in text for text in subheaders)
-    assert any("프로모션 효과 평가" in text for text in subheaders)
-    assert any("편차 원인 구분" in text for text in subheaders)
-    assert any("문턱값 근접도" in text for text in subheaders)
-    assert any("장단점" in text for text in subheaders)
-    assert any("영업이익율 × 매출증감율" in text for text in subheaders)
-    assert any("대리점 그룹별 효과 비교" in text for text in subheaders)
+    # 다른 페이지로 넘어가면 Streamlit이 업로더 위젯 값을 비우므로, 돌아와도 재분석·재이동 없이
+    # 업로드 화면에 머물고 이전 결과로 가는 링크만 보여야 한다.
+    assert any("워크북을 올리면" in i.value for i in at.info)
+    assert not at.status
+    assert "ingest_result" in at.session_state
 
-    metric_labels = [m.label for m in at.metric]
-    assert "대리점 수" in metric_labels
-    assert "평균 영업이익율" in metric_labels
-    assert "총 지원금액" in metric_labels
+
+def test_uploader_shows_error_for_unsupported_workbook(tmp_path):
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "다른시트"
+    path = tmp_path / "bad.xlsx"
+    wb.save(path)
+
+    at = AppTest.from_file(str(APP_SCRIPT), default_timeout=30)
+    at.run()
+    at.file_uploader(key="workbook_file").upload(
+        "bad.xlsx", path.read_bytes(),
+        mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    at.run()
+    assert not at.exception
+    assert any("워크북을 읽을 수 없습니다" in e.value for e in at.error)
 
 
 def test_history_page_prompts_when_fewer_than_two_periods_saved():

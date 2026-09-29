@@ -52,6 +52,8 @@ PRD가 처음에 가정한 "평평한 한 장짜리 실적 파일 + 프로모션
 ## UI/디자인 작업 규칙
 - 화면을 만들거나 고칠 때는 항상 `design.md`(세방그룹 CI 디자인 시스템 — 컬러 토큰, 타이포그래피, 간격, 컴포넌트 원칙)를 기준으로 삼고, 임의의 색상·폰트·간격 값을 새로 만들지 않는다.
 - `design.md`는 사람이 읽는 규칙 문서일 뿐 자동 적용되지 않는다. 실제로 토큰을 적용하려면 각 HTML에서 `sebang-design-system/sebang.css`를 `<link>`로 불러와야 한다(`sebang-design-system/README.md` 참고).
+- 분석 결과 화면은 `app/dashboard.py`의 HTML 카드·차트를 `st.html(..., unsafe_allow_javascript=True)`로 그린다(iframe 아님 — 페이지 폰트·스크롤을 그대로 쓰고, `IntersectionObserver`로 스크롤해 들어올 때 막대가 차오르고 숫자가 올라간다). 업로드 데이터에서 온 텍스트는 반드시 `html.escape`(`dashboard._e`)를 거치고, 툴팁은 JS에서 `textContent`로만 채운다. Streamlit 위젯이 들어가는 카드는 `st.container(key="sbcard-...")`로 만들면 CSS가 카드 모양을 입힌다. 화면 확인은 스크래치 venv의 Playwright(`channel="msedge"`)로 실제 브라우저 스크린샷을 찍어 본다(`.docs/21_분석결과_대시보드_UI_개편_계획서.md`).
+- **SEBANG Gothic 폰트의 em dash(—)·en dash(–) 글리프는 윤곽선이 비어 있다**(빈칸으로 보임). `dashboard.DASHBOARD_CSS` 맨 앞의 `unicode-range` @font-face가 그 글자만 시스템 한글 폰트로 대신 그리므로, 이 CSS를 모든 페이지에서 `ui_common.inject_design_system_css()`로 넣어야 한다.
 - 차트/그래프를 만들 때는 `dataviz` 스킬 절차(형태 선택 → 색상 배정 → `validate_palette.js` 검증 → 마크/호버/접근성)를 따른다. design.md는 카테고리 색 순서를 "ink→green→orange→gray-400"으로 정하고 있지만, ink·gray는 채도가 낮아 차트 마크(식별색)로 쓰면 접근성 검증(chroma floor)을 통과하지 못한다 — 실제 차트 식별색은 브랜드 포인트 컬러 두 개(Green/Orange)만 쓰고, ink·gray는 축·구분선 등 비식별 요소나 "하나만 강조, 나머지는 회색" 패턴에만 쓴다.
 
 ## `output/` 화면 목업 구조 (Streamlit 앱 전 단계의 정적 HTML 프로토타입)

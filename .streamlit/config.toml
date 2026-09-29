@@ -25,3 +25,11 @@ family = "SEBANG Gothic"
 url = "app/static/SebangGothic-Bold.woff2"
 weight = "700"
 style = "normal"
+
+# 참고 이미지(DashLite)처럼 사이드바는 어두운 Ink 배경 — design.md 1.2·5절대로 워드마크는
+# 흰색(ui_common.render_brand_header). 강조색은 Ink 위에서도 대비가 나오는 Green-300.
+[theme.sidebar]
+backgroundColor = "#1F3742"           # sebang-ink-500
+secondaryBackgroundColor = "#16262E"  # sebang-ink-700
+textColor = "#EDEFF0"                 # sebang-ink-50
+primaryColor = "#66C1CB"              # sebang-green-300

@@ -30,7 +30,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Callable
 
 import openpyxl
 import pandas as pd
@@ -562,7 +562,11 @@ def _build_promotion_insight(
     return lines
 
 
-def build_sales_like_table(workbook: str | Path | BinaryIO, 기준연월: str) -> IngestResult:
+def build_sales_like_table(
+    workbook: str | Path | BinaryIO,
+    기준연월: str,
+    progress: Callable[[str, float], None] | None = None,
+) -> IngestResult:
     """워크북을 읽어 대리점 단위 결과를 만든다. "DC율" 시트가 있어야 하는
     유일한 형식이다(`.docs/19_최종백데이터_전환_계획서.md`).
 
@@ -589,6 +593,11 @@ def build_sales_like_table(workbook: str | Path | BinaryIO, 기준연월: str) -
     보여주는 신호를 함께 정리한 참고 의견이다(차기 설계안을 대신 결정하지 않음,
     PRD 3절 비목표).
     """
+    def _step(label: str, fraction: float) -> None:
+        if progress is not None:
+            progress(label, fraction)
+
+    _step("워크북 시트(DC율·프로모션 기준·DATA)를 읽는 중", 0.05)
     wb = openpyxl.load_workbook(workbook, data_only=True, read_only=False)
     if "DC율" not in wb.sheetnames:
         raise ColumnNotFoundError('워크북에 "DC율" 시트가 없습니다 — 지원하는 형식이 아닙니다.')
@@ -607,6 +616,7 @@ def build_sales_like_table(workbook: str | Path | BinaryIO, 기준연월: str) -
     data = data.merge(dc율[["대리점코드", "매출DC율", "성장DC율"]], on="대리점코드", how="left")
     data[["매출DC율", "성장DC율"]] = data[["매출DC율", "성장DC율"]].fillna(0.0)
 
+    _step("대리점별 DC 지원금액을 계산하는 중", 0.45)
     # --- DC지원금액 = 기준가 × 판매수량 × DC율 (PRD 6.3.3), "DC율 미적용" 제품은 0원 ---
     eligible = ~data["DC미적용"].fillna(False)
     data["매출DC금액"] = 0.0
@@ -614,6 +624,7 @@ def build_sales_like_table(workbook: str | Path | BinaryIO, 기준연월: str) -
     data.loc[eligible, "매출DC금액"] = data.loc[eligible, "기준가"] * data.loc[eligible, "판매수량"] * data.loc[eligible, "매출DC율"]
     data.loc[eligible, "성장DC금액"] = data.loc[eligible, "기준가"] * data.loc[eligible, "판매수량"] * data.loc[eligible, "성장DC율"]
 
+    _step("산식유형별 프로모션 지원금액을 계산하는 중", 0.6)
     # --- 프로모션 지원금액: 산식유형별로 계산 ---
     data["프로모션금액"] = 0.0
     support_by_label: dict[str, pd.Series] = {}
@@ -728,6 +739,7 @@ def build_sales_like_table(workbook: str | Path | BinaryIO, 기준연월: str) -
         by_store = data.loc[mask].assign(_금액=amount).groupby("대리점코드")["_금액"].sum()
         support_by_label[label] = support_by_label.get(label, pd.Series(dtype=float)).add(by_store, fill_value=0.0)
 
+    _step("대리점 단위 결과와 교차 분석을 정리하는 중", 0.85)
     store_agg = data.groupby("대리점코드", as_index=False).agg(
         대리점명=("대리점명", "first"),
         매출액=("매출액", "sum"),
